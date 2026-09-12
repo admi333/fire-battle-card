@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+  
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消防作战信息卡制作工具 - 标准化数字作战卡系统</title>
+  <meta name="description" content="标准化消防作战信息卡制作系统，支持村落与单体建筑模板、地图战术标绘、双页A4横版制式输出、多格式导出，完美兼容Edge与Chrome。">
+  <meta property="og:title" content="消防作战信息卡制作工具">
+  <meta property="og:description" content="快速制作标准化作战信息卡 · 支持地图标绘 · 双页A4导出">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+            },
+            fire: {
+              50: '#fef2f2',
+              100: '#fee2e2',
+              500: '#ef4444',
+              600: '#dc2626',
+              700: '#b91c1c',
+            },
+            surface: '#f6f8fb',
+          },
+          boxShadow: {
+            'os-sm': '0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 4px -1px rgba(0, 0, 0, 0.03)',
+            'os-md': '0 8px 24px -4px rgba(0, 0, 0, 0.06), 0 4px 12px -2px rgba(0, 0, 0, 0.03)',
+            'os-lg': '0 16px 36px -6px rgba(0, 0, 0, 0.08), 0 8px 16px -4px rgba(0, 0, 0, 0.04)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Fabric.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+  <!-- html2canvas CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- docx CDN (用于导出 Word 文档) -->
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+  <!-- JSZip CDN 用于一键打包源码 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  
+  <link rel="stylesheet" href="assets/style.css">
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@2.0.4"></script></head>
+<body class="bg-[#f6f8fb] text-slate-800 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- ==================== 视图 1：首页 (模板选择与历史工程) ==================== -->
+  <div id="view-home" class="flex flex-col min-h-screen">
+<!-- 顶部导航栏 -->
+  <header id="main-header" class="bg-white/90 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-18 flex items-center justify-between py-3.5">
+      <div class="flex items-center space-x-3.5">
+        <!-- 消防标识图标徽章 -->
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center shadow-md shadow-red-500/20">
+          <i class="fa-solid fa-shield-halved text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-bold tracking-tight text-slate-900">消防作战信息卡制作工具</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200/60 font-medium">战勤数字化</span>
+          </div>
+          <p class="text-xs text-slate-500 mt-0.5">快速制作标准化作战信息卡 · 支持地图标绘 · 多格式导出</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <!-- 打包下载全部网页源码 -->
+        <button id="btn-download-source-zip" type="button" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-xs" title="一键将 index.html 和 editor.html 等完整前端网页代码打包为 ZIP 压缩包下载到本地" disabled=""><i class="fa-solid fa-spinner fa-spin text-emerald-600 mr-1"></i><span>正在打包源码...</span></button>
+
+        <!-- 导入已有工程按钮 -->
+        <button id="btn-import-project" type="button" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200/80 transition-colors">
+          <i class="fa-solid fa-file-arrow-up text-slate-500"></i>
+          <span>导入工程</span>
+        </button>
+        <input type="file" id="file-import-input" accept=".json" class="hidden">
+
+        <!-- 帮助/说明按钮 -->
+        <button id="btn-show-help" type="button" class="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100/80 transition-colors">
+          <i class="fa-regular fa-circle-question"></i>
+          <span>制卡规范</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主体区域 -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-10">
+
+    <!-- 模块1：选择模板新建 -->
+    <section id="section-templates" class="mb-12">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-6 rounded-full bg-blue-600 inline-block"></span>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">+ 选择模板新建</h2>
+        </div>
+        <span class="text-xs text-slate-400">选择对应场景，进入三栏专属编辑器</span>
+      </div>
+
+      <!-- 两个模板卡片并排 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+
+        <!-- 卡片1：村落/村庄模板 (绿色浅背景) -->
+        <a id="card-village" href="javascript:void(0)" data-nav-template="village" class="template-card block bg-emerald-50/70 border-2 border-emerald-200/80 rounded-3xl p-6 sm:p-7 shadow-os-sm hover:shadow-os-lg hover:border-emerald-500 text-left relative overflow-hidden group">
+          <!-- 背景装饰图形 -->
+          <div class="absolute -right-8 -bottom-8 w-36 h-36 bg-emerald-200/30 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div class="absolute top-6 right-6 w-12 h-12 rounded-2xl bg-white/80 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-sm group-hover:bg-emerald-600 group-hover:text-white transition-all">
+            <i class="fa-solid fa-tree-city text-xl"></i>
+          </div>
+
+          <div class="pr-12">
+            <span class="inline-flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 mb-3.5">
+              <i class="fa-solid fa-house-chimney-window text-[11px]"></i>
+              <span>村落 / 村庄类</span>
+            </span>
+            <h3 class="text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">村落作战信息卡</h3>
+            <p class="text-sm text-slate-600 mt-2 line-clamp-2">左表右图布局 · 基本信息 + 水源图，适合农村自建房密集区、历史文化古村落作战指挥。</p>
+
+            <!-- 标签列表 -->
+            <div class="flex flex-wrap gap-2 mt-5">
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-emerald-200/60 shadow-xs">
+                <i class="fa-solid fa-location-dot text-emerald-600 mr-1"></i>地址
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-emerald-200/60 shadow-xs">
+                <i class="fa-solid fa-building-user text-emerald-600 mr-1"></i>建筑特点
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-emerald-200/60 shadow-xs">
+                <i class="fa-solid fa-faucet-drip text-emerald-600 mr-1"></i>室外水源
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-emerald-200/60 shadow-xs">
+                <i class="fa-solid fa-triangle-exclamation text-emerald-600 mr-1"></i>重点事项
+              </span>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-emerald-200/60 flex items-center justify-between text-xs font-semibold text-emerald-700">
+              <span class="flex items-center space-x-1">
+                <span>包含水源标绘与疏散指引</span>
+              </span>
+              <span class="inline-flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
+                <span>进入制作</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </span>
+            </div>
+          </div>
+        </a>
+
+        <!-- 卡片2：单体建筑模板 (浅橙背景) -->
+        <a id="card-building" href="javascript:void(0)" data-nav-template="building" class="template-card block bg-amber-50/70 border-2 border-amber-200/80 rounded-3xl p-6 sm:p-7 shadow-os-sm hover:shadow-os-lg hover:border-amber-500 text-left relative overflow-hidden group">
+          <!-- 背景装饰图形 -->
+          <div class="absolute -right-8 -bottom-8 w-36 h-36 bg-amber-200/30 rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500"></div>
+          <div class="absolute top-6 right-6 w-12 h-12 rounded-2xl bg-white/80 border border-amber-200 flex items-center justify-center text-amber-600 shadow-sm group-hover:bg-amber-600 group-hover:text-white transition-all">
+            <i class="fa-solid fa-building-shield text-xl"></i>
+          </div>
+
+          <div class="pr-12">
+            <span class="inline-flex items-center space-x-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 mb-3.5">
+              <i class="fa-solid fa-city text-[11px]"></i>
+              <span>重点单位 / 高层建筑</span>
+            </span>
+            <h3 class="text-xl font-bold text-slate-900 group-hover:text-amber-700 transition-colors">单体建筑作战信息卡</h3>
+            <p class="text-sm text-slate-600 mt-2 line-clamp-2">信息总表 + 总平面图 + 水源交通图，针对厂房、商场、高层、仓储等大型建筑精细化处置。</p>
+
+            <!-- 标签列表 -->
+            <div class="flex flex-wrap gap-2 mt-5">
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-amber-200/60 shadow-xs">
+                <i class="fa-solid fa-id-card text-amber-600 mr-1"></i>单位信息
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-amber-200/60 shadow-xs">
+                <i class="fa-solid fa-fire-extinguisher text-amber-600 mr-1"></i>消防设施
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-amber-200/60 shadow-xs">
+                <i class="fa-solid fa-person-running text-amber-600 mr-1"></i>疏散信息
+              </span>
+              <span class="text-xs font-medium px-2.5 py-1 rounded-lg bg-white/90 text-slate-700 border border-amber-200/60 shadow-xs">
+                <i class="fa-solid fa-bullseye text-amber-600 mr-1"></i>处置要点
+              </span>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-amber-200/60 flex items-center justify-between text-xs font-semibold text-amber-700">
+              <span class="flex items-center space-x-1">
+                <span>包含耐火等级、通道与灭火设施</span>
+              </span>
+              <span class="inline-flex items-center space-x-1 group-hover:translate-x-1 transition-transform">
+                <span>进入制作</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+              </span>
+            </div>
+          </div>
+        </a>
+
+      </div>
+    </section>
+
+    <!-- 模块2：最近工程模块 -->
+    <section id="section-recent-projects">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-2">
+          <span class="w-2.5 h-6 rounded-full bg-slate-400 inline-block"></span>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">最近工程</h2>
+        </div>
+        <span class="text-xs text-slate-400">数据保存在当前浏览器本地（LocalStorage）</span>
+      </div>
+
+      <!-- 工程列表容器 -->
+      <div id="recent-projects-list" class="space-y-3"><div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-os-sm hover:shadow-os-md transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group">
+              <div class="flex items-center space-x-4">
+                <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-tree-city text-lg"></i>
+                </div>
+                <div>
+                  <div class="flex items-center space-x-2.5">
+                    <h4 class="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">未命名作战信息卡</h4>
+                    <span class="text-xs px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border-emerald-200 border font-medium">村落模板</span>
+                  </div>
+                  <p class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span><i class="fa-regular fa-clock mr-1 text-slate-400"></i>更新日期：2026/09/13 00:43</span>
+                    <span><i class="fa-solid fa-location-dot mr-1 text-slate-400"></i>杭州萧山</span>
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center space-x-2 self-end sm:self-center">
+                <button type="button" data-del-id="project_1789231310121" class="btn-del-project px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="删除记录">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+                <button type="button" data-edit-type="village" data-edit-id="project_1789231310121" class="btn-open-edit px-4 py-2 rounded-xl text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm flex items-center space-x-1.5">
+                  <i class="fa-regular fa-pen-to-square"></i>
+                  <span>打开编辑</span>
+                </button>
+              </div>
+            </div></div>
+    </section>
+
+  </main>
+
+  <!-- 规范与操作指引模态弹窗 -->
+  <div id="modal-help" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div class="flex items-center space-x-2 text-slate-900 font-bold text-lg">
+          <i class="fa-solid fa-book-open text-blue-600"></i>
+          <span>消防作战信息卡制作指南</span>
+        </div>
+        <button id="btn-close-help" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-100">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="py-4 space-y-3.5 text-sm text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto">
+        <div class="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+          <h5 class="font-semibold text-blue-900 text-xs mb-1">💡 什么是消防作战信息卡？</h5>
+          <p class="text-xs text-blue-800">作战信息卡是一线消防救援队伍实施灾害现场初战指挥的标准化辅助卡片，融合关键建筑物理参数、水源方位、进攻通道与战术部署要点。</p>
+        </div>
+        <div class="space-y-2">
+          <h5 class="font-semibold text-slate-800 text-xs uppercase tracking-wider">标准化流程：</h5>
+          <ol class="list-decimal pl-4 space-y-1.5 text-xs">
+            <li><strong>选择模板：</strong>根据现场性质选择【村落】或【单体建筑】。</li>
+            <li><strong>要素录入：</strong>在左侧面板填写地址、耐火等级、水源及要点。</li>
+            <li><strong>标绘部署：</strong>在中间地图上标注着火点、消火栓、进攻路线和危险区域。</li>
+            <li><strong>导出成型：</strong>一键导出标准A4横向PDF用于塑封上车，或导出PNG与Word。</li>
+          </ol>
+        </div>
+        <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200/80 text-xs text-amber-900">
+          <strong>数据安全性提示：</strong>本系统采用纯前端离线架构，所有标绘与文本均保存在本地浏览器内，不经服务器传输，严密保障重点战备数据安全。
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 text-right">
+        <button id="btn-confirm-help" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs transition-colors">
+          我已了解
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 页脚 -->
+  <footer class="border-t border-slate-200/70 py-6 mt-12 bg-white/60 text-center text-xs text-slate-400">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>消防战训保障数字化 · 作战信息卡制作系统 (前端独立版)</p>
+      <p class="flex items-center space-x-2">
+        <span>完美兼容 Microsoft Edge 90+ / Google Chrome</span>
+        <span>·</span>
+        <span>A4 标准横版打印输出</span>
+      </p>
+    </div>
+  </footer>
+
+  <!-- 首页逻辑脚本 (原生ES6+，完美兼容Edge 90+及Chrome，无沙盒阻断) -->
+  </div>
+
+  <!-- ==================== 视图 2：编辑器 (左表右图、地图标绘、成品导出) ==================== -->
+  <div id="view-editor" class="flex flex-col h-screen select-none hidden">
+<!-- 1. 顶部操作栏 -->
+  <header class="h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 flex items-center justify-between z-30 shrink-0 shadow-xs">
+    <!-- 左侧：返回与工程信息 -->
+    <div class="flex items-center space-x-3.5">
+      <button type="button" id="btn-back-to-home" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-900 transition-colors">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>返回首页</span>
+      </button>
+
+      <div class="h-5 w-[1px] bg-slate-200"></div>
+
+      <!-- 工程类型与标题 -->
+      <div class="flex items-center space-x-2">
+        <span id="badge-template-type" class="text-xs px-2.5 py-1 rounded-lg font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+          村落模板
+        </span>
+        <div class="relative group">
+          <input id="input-project-title" type="text" value="浙江省杭州市萧山区进化镇城山村作战信息卡" class="font-bold text-slate-800 text-sm sm:text-base bg-transparent hover:bg-slate-50 focus:bg-white px-2 py-1 rounded-lg border border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none transition-all w-56 sm:w-80" placeholder="输入信息卡标题..." title="点击重命名作战卡">
+          <i class="fa-solid fa-pen text-[10px] text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中间：标绘状态提示 -->
+    <div class="hidden xl:flex items-center space-x-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
+      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+      <span id="top-status-indicator">当前状态：地图浏览模式 (点击右侧素材直接标绘)</span>
+    </div>
+
+    <!-- 右侧：主要操作按钮群 -->
+    <div class="flex items-center space-x-2">
+      <!-- 载入图1城山村标准案例 -->
+      <button id="btn-load-standard-demo" type="button" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors shadow-xs" title="快速填入用户提供的进化镇城山村标准实战图样">
+        <i class="fa-solid fa-wand-magic-sparkles text-blue-600"></i>
+        <span>载入城山村标准格式</span>
+      </button>
+
+      <!-- 导入与导出 JSON -->
+      <button id="btn-import-json" type="button" class="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" title="导入本地JSON备份">
+        <i class="fa-solid fa-upload text-slate-500"></i>
+        <span>导入</span>
+      </button>
+      <input type="file" id="input-file-import" accept=".json" class="hidden">
+
+      <button id="btn-export-json" type="button" class="hidden sm:inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" title="备份导出JSON工程文件">
+        <i class="fa-solid fa-download text-slate-500"></i>
+        <span>导出工程</span>
+      </button>
+
+      <!-- 保存到浏览器本地 -->
+      <button id="btn-save-project" type="button" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-xs">
+        <i class="fa-regular fa-floppy-disk"></i>
+        <span>保存</span>
+      </button>
+
+      <!-- 打包下载源码 -->
+      <button id="btn-editor-download-zip" type="button" class="hidden md:inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" title="一键将整套系统前端源代码(index.html与editor.html)打包为ZIP下载">
+        <i class="fa-solid fa-file-zipper text-slate-600"></i>
+        <span>打包源码</span>
+      </button>
+
+      <!-- 预览成品 (A4横版) -->
+      <button id="btn-preview-card" type="button" class="inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
+        <i class="fa-regular fa-eye"></i>
+        <span>预览成品卡片</span>
+      </button>
+
+      <!-- 快速导出PDF -->
+      <button id="btn-quick-export-pdf" type="button" class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors shadow-xs" title="一键导出A4打印PDF">
+        <i class="fa-solid fa-file-pdf"></i>
+        <span>导出PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. 下方三栏核心工作区 -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- ==================== 左侧面板：作战信息表单 ==================== -->
+    <aside id="panel-left-form" class="w-80 sm:w-96 bg-white border-r border-slate-200/80 flex flex-col shrink-0 z-20 shadow-os-sm select-text">
+      <!-- 面板标题栏 -->
+      <div class="p-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-table-list text-blue-600 text-sm"></i>
+          <h2 class="text-sm font-bold text-slate-800">基本信息要素表单</h2>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-fill-demo" type="button" class="text-[11px] px-2 py-1 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 font-medium transition-colors" title="重置为进化镇城山村示例">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i>重载示例
+          </button>
+          <button id="btn-clear-form" type="button" class="text-[11px] px-2 py-1 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors" title="清空表单文本">
+            <i class="fa-regular fa-trash-can"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 表单输入区域 (滚动容器) -->
+      <div class="flex-1 overflow-y-auto p-4 space-y-3.5">
+        <!-- 模板切换提示 -->
+        <div class="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
+          <span class="text-blue-900 font-medium" id="form-template-desc">当前模式：村落作战信息卡 (严格对齐图1规范)</span>
+          <button id="btn-switch-template" class="text-blue-600 hover:underline font-bold text-[11px]">切换类型</button>
+        </div>
+
+        <!-- 动态表单容器 -->
+        <form id="tactical-form" class="space-y-3">
+          <!-- JS 自动注入字段 -->
+        </form>
+      </div>
+
+      <!-- 左侧底部状态 -->
+      <div class="p-3 border-t border-slate-100 text-[11px] text-slate-400 bg-slate-50/50 flex justify-between items-center shrink-0">
+        <span>输入要素实时同步至作战信息卡</span>
+        <span id="form-saved-time">未保存</span>
+      </div>
+    </aside>
+
+    <!-- ==================== 中间区域：Leaflet 地图画布 ==================== -->
+    <main class="flex-1 relative flex flex-col bg-slate-100 min-w-0">
+      
+      <!-- 地图浮动工具栏 (顶部控制条) -->
+      <div class="absolute top-4 left-4 z-20 flex flex-wrap items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-os-md border border-slate-200/80">
+        <!-- 底图切换 -->
+        <div class="flex items-center space-x-1 bg-slate-100/90 p-1 rounded-xl text-xs">
+          <button id="btn-layer-vector" type="button" class="px-2.5 py-1 rounded-lg font-bold text-blue-700 bg-white shadow-xs transition-all">
+            <i class="fa-solid fa-map mr-1"></i>电子底图
+          </button>
+          <button id="btn-layer-satellite" type="button" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition-all">
+            <i class="fa-solid fa-earth-americas mr-1"></i>卫星遥感影像
+          </button>
+        </div>
+
+        <div class="h-4 w-[1px] bg-slate-200"></div>
+
+        <!-- 萧山区进化镇城山村快速定位 -->
+        <button id="btn-reset-view" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors flex items-center space-x-1" title="复位至进化镇城山村核心位置">
+          <i class="fa-solid fa-crosshairs text-blue-600"></i>
+          <span>复位城山村</span>
+        </button>
+
+        <!-- 地名快速搜索 -->
+        <div class="relative flex items-center">
+          <input id="input-map-search" type="text" placeholder="搜索萧山地名(回车定位)..." class="text-xs pl-7 pr-2 py-1 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-500 w-36 sm:w-44">
+          <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px]"></i>
+        </div>
+
+        <div class="h-4 w-[1px] bg-slate-200"></div>
+
+        <!-- 清空全部标绘 -->
+        <button id="btn-clear-plots" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-1">
+          <i class="fa-regular fa-trash-can"></i>
+          <span>清空标绘</span>
+        </button>
+      </div>
+
+      <!-- 地图主容器 -->
+      <div class="flex-1 relative w-full h-full">
+        <!-- Leaflet Map Div -->
+        <div id="map-container"></div>
+
+        <!-- Fabric.js 自由标绘辅助画布叠加层 -->
+        <div id="fabric-overlay-container">
+          <canvas id="fabric-canvas"></canvas>
+        </div>
+
+        <!-- 战术指北针指示 (左下角，同图1设计) -->
+        <div class="absolute bottom-6 left-6 z-20 pointer-events-none flex items-center space-x-2 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-os-sm border border-slate-200/80">
+          <div class="w-6 h-6 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-[10px] border border-blue-400">
+            N
+          </div>
+          <span class="text-[11px] font-bold text-slate-800">指北针</span>
+        </div>
+
+        <!-- 地图右下角坐标指示 -->
+        <div id="map-coords-display" class="absolute bottom-2 right-4 z-20 pointer-events-none text-[10px] text-slate-600 bg-white/85 px-2.5 py-1 rounded-lg border border-slate-200/60 shadow-xs">
+          坐标：120.28250, 29.98800 | 萧山进化镇城山村
+        </div>
+      </div>
+    </main>
+
+    <!-- ==================== 右侧面板：图例素材库 + 属性设置 ==================== -->
+    <aside id="panel-right-legend" class="w-80 bg-white border-l border-slate-200/80 flex flex-col shrink-0 z-20 shadow-os-sm select-none">
+      
+      <!-- 模块1：图例素材库 (严格对齐图1和图2战术符号) -->
+      <div class="p-3.5 border-b border-slate-100 bg-slate-50/70">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-shapes text-blue-600 text-sm"></i>
+            <h3 class="text-sm font-bold text-slate-800">战术图例素材库</h3>
+          </div>
+          <span class="text-[11px] text-slate-400">点击素材直接标绘</span>
+        </div>
+
+        <!-- 标绘工具按钮网格 (全面包含图1与图2中符号) -->
+        <div class="grid grid-cols-2 gap-1.5">
+          <!-- 浏览/选择模式 -->
+          <button type="button" data-tool="select" class="btn-tool col-span-2 flex items-center justify-center space-x-2 p-1.5 rounded-xl text-xs font-bold bg-blue-50 text-blue-700 border-2 border-blue-600 transition-all shadow-xs">
+            <i class="fa-solid fa-arrow-pointer"></i>
+            <span>选择与移动模式</span>
+          </button>
+
+          <!-- 1. 车辆可进入 (图1与图2最核心标绘要素) -->
+          <button type="button" data-tool="vehicle_entry" class="btn-tool col-span-2 flex items-center space-x-2 p-2 rounded-xl text-xs font-bold bg-red-50/90 hover:bg-red-100 text-red-700 border-2 border-red-300 hover:border-red-500 transition-all shadow-xs">
+            <span class="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center text-xs">
+              <i class="fa-solid fa-location-arrow"></i>
+            </span>
+            <div class="text-left">
+              <div class="font-black text-red-700">车辆可进入 (导向箭头)</div>
+              <div class="text-[10px] text-red-500 font-normal">点击路口标引入攻方向</div>
+            </div>
+          </button>
+
+          <!-- 2. 市政消火栓 (图1中标有DN300的红色消火栓) -->
+          <button type="button" data-tool="hydrant" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-red-50 text-slate-800 hover:text-red-600 border border-slate-200 hover:border-red-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-fire-extinguisher"></i>
+            </span>
+            <span>消火栓(DN300)</span>
+          </button>
+
+          <!-- 3. 天然池塘 / 水源 (图1中水滴池塘、图2水源圆标) -->
+          <button type="button" data-tool="pond" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-blue-50 text-slate-800 hover:text-blue-600 border border-slate-200 hover:border-blue-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-droplet"></i>
+            </span>
+            <span>天然池塘/水源</span>
+          </button>
+
+          <!-- 4. 村委会 / 党政重点 (红星徽章) -->
+          <button type="button" data-tool="committee" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-amber-50 text-slate-800 hover:text-amber-600 border border-slate-200 hover:border-amber-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-red-500 text-white flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-star"></i>
+            </span>
+            <span>村委会/重点单位</span>
+          </button>
+
+          <!-- 5. 文教幼托 (图1与图2中城山幼儿园) -->
+          <button type="button" data-tool="school" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-cyan-50 text-slate-800 hover:text-cyan-700 border border-slate-200 hover:border-cyan-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-cyan-100 text-cyan-700 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-school"></i>
+            </span>
+            <span>文教/学校幼托</span>
+          </button>
+
+          <!-- 6. 道路干线标牌 (如沪昆高速、白曹线、曹下线) -->
+          <button type="button" data-tool="road_label" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-slate-100 text-slate-800 hover:text-slate-900 border border-slate-200 hover:border-slate-400 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-slate-800 text-white flex items-center justify-center text-[10px]">
+              <i class="fa-solid fa-road"></i>
+            </span>
+            <span>干线路标(沪昆/白曹)</span>
+          </button>
+
+          <!-- 7. 着火点 (动态烈火) -->
+          <button type="button" data-tool="fire" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-red-50 text-slate-800 hover:text-red-600 border border-slate-200 hover:border-red-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-fire-flame-curved"></i>
+            </span>
+            <span>着火点</span>
+          </button>
+
+          <!-- 8. 进攻路线 / 干线水带 -->
+          <button type="button" data-tool="route" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-orange-50 text-slate-800 hover:text-orange-600 border border-slate-200 hover:border-orange-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-arrow-trend-up"></i>
+            </span>
+            <span>进攻干线</span>
+          </button>
+
+          <!-- 9. 河流水域 / 居民区 (多边形) -->
+          <button type="button" data-tool="polygon" class="btn-tool flex items-center space-x-2 p-2 rounded-xl text-xs font-medium bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-600 border border-slate-200 hover:border-emerald-300 transition-all shadow-xs">
+            <span class="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center text-[11px]">
+              <i class="fa-solid fa-draw-polygon"></i>
+            </span>
+            <span>河流/居民区域</span>
+          </button>
+
+          <!-- 10. 自由战术涂鸦 (Fabric.js 引擎) -->
+          <button type="button" data-tool="freehand" class="btn-tool col-span-2 flex items-center justify-center space-x-2 p-2 rounded-xl text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 hover:border-purple-400 transition-all shadow-xs">
+            <i class="fa-solid fa-signature"></i>
+            <span>自由战术手绘涂鸦 (Fabric.js)</span>
+          </button>
+        </div>
+
+        <!-- 绘制操作中提示条 -->
+        <div id="draw-instruction-bar" class="mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200/80 text-[11px] text-amber-800 flex items-center justify-between hidden">
+          <span id="draw-instruction-text"><i class="fa-solid fa-circle-info mr-1"></i>在地图上点击连续拐点，双击结束绘制</span>
+          <button id="btn-cancel-draw" class="text-amber-900 font-bold hover:underline">取消</button>
+        </div>
+      </div>
+
+      <!-- 模块2：属性面板 (动态根据选中对象展示) -->
+      <div class="flex-1 overflow-y-auto p-3.5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2.5">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-sliders text-blue-600 text-sm"></i>
+              <h3 class="text-sm font-bold text-slate-800">标绘属性控制台</h3>
+            </div>
+            <span id="selected-element-badge" class="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-mono">未选中</span>
+          </div>
+
+          <!-- 选中时的属性表单 -->
+          <div id="properties-content" class="space-y-3 hidden">
+            <!-- 标注文字内容 -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">标注名称 / 文字</label>
+              <input id="prop-text-label" type="text" class="w-full text-xs px-3 py-1.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-500 bg-slate-50 focus:bg-white" placeholder="输入战术标注文字...">
+            </div>
+
+            <!-- 车辆可进入/导向箭头专属：旋转角度 -->
+            <div id="prop-rotation-wrapper" class="p-2 bg-red-50/60 rounded-xl border border-red-100 hidden">
+              <div class="flex justify-between items-center text-xs font-semibold text-red-900 mb-1.5">
+                <span>车辆进入导向角度</span>
+                <span id="prop-rotation-val" class="font-mono text-red-700">0°</span>
+              </div>
+              <input id="prop-rotation-slider" type="range" min="0" max="360" value="0" class="w-full accent-red-600 h-1.5 bg-red-200 rounded-lg cursor-pointer mb-2">
+              <div class="grid grid-cols-4 gap-1 text-[10px]">
+                <button type="button" class="btn-quick-angle py-1 bg-white hover:bg-red-100 rounded text-red-700 font-bold border border-red-200" data-angle="0">0° 北</button>
+                <button type="button" class="btn-quick-angle py-1 bg-white hover:bg-red-100 rounded text-red-700 font-bold border border-red-200" data-angle="90">90° 东</button>
+                <button type="button" class="btn-quick-angle py-1 bg-white hover:bg-red-100 rounded text-red-700 font-bold border border-red-200" data-angle="180">180° 南</button>
+                <button type="button" class="btn-quick-angle py-1 bg-white hover:bg-red-100 rounded text-red-700 font-bold border border-red-200" data-angle="270">270° 西</button>
+              </div>
+            </div>
+
+            <!-- 消火栓管径专属快速选择 -->
+            <div id="prop-hydrant-pipe-wrapper" class="p-2 bg-blue-50/60 rounded-xl border border-blue-100 hidden">
+              <label class="block text-xs font-semibold text-blue-900 mb-1">消火栓管径规范</label>
+              <div class="grid grid-cols-4 gap-1 text-[10px]">
+                <button type="button" class="btn-pipe-size py-1 bg-white hover:bg-blue-100 rounded text-blue-700 font-bold border border-blue-200" data-pipe="DN300">DN300</button>
+                <button type="button" class="btn-pipe-size py-1 bg-white hover:bg-blue-100 rounded text-blue-700 font-bold border border-blue-200" data-pipe="DN200">DN200</button>
+                <button type="button" class="btn-pipe-size py-1 bg-white hover:bg-blue-100 rounded text-blue-700 font-bold border border-blue-200" data-pipe="DN150">DN150</button>
+                <button type="button" class="btn-pipe-size py-1 bg-white hover:bg-blue-100 rounded text-blue-700 font-bold border border-blue-200" data-pipe="DN100">DN100</button>
+              </div>
+            </div>
+
+            <!-- 战术代表颜色选择 -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">代表色调</label>
+              <div class="flex items-center space-x-1.5">
+                <button type="button" data-color="#dc2626" class="btn-color-swatch w-5 h-5 rounded-full bg-red-600 border border-white hover:scale-110 shadow-xs" title="火灾/警戒红"></button>
+                <button type="button" data-color="#2563eb" class="btn-color-swatch w-5 h-5 rounded-full bg-blue-600 border border-white hover:scale-110 shadow-xs" title="水源蓝"></button>
+                <button type="button" data-color="#059669" class="btn-color-swatch w-5 h-5 rounded-full bg-emerald-600 border border-white hover:scale-110 shadow-xs" title="安全绿"></button>
+                <button type="button" data-color="#ea580c" class="btn-color-swatch w-5 h-5 rounded-full bg-orange-600 border border-white hover:scale-110 shadow-xs" title="进攻橙"></button>
+                <button type="button" data-color="#0f172a" class="btn-color-swatch w-5 h-5 rounded-full bg-slate-900 border border-white hover:scale-110 shadow-xs" title="黑色"></button>
+                <input id="prop-color-input" type="color" value="#dc2626" class="w-6 h-6 rounded cursor-pointer border border-slate-200 p-0" title="任意颜色">
+              </div>
+            </div>
+
+            <!-- 尺寸 / 线宽 -->
+            <div>
+              <div class="flex justify-between items-center text-xs font-semibold text-slate-700 mb-1">
+                <span>标绘尺寸 / 宽度</span>
+                <span id="prop-size-val" class="font-mono text-slate-500">28px</span>
+              </div>
+              <input id="prop-size-slider" type="range" min="12" max="64" value="28" class="w-full accent-blue-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer">
+            </div>
+
+            <!-- 操作操作项 -->
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <div class="flex items-center space-x-1">
+                <button id="btn-prop-bring-front" type="button" class="px-2 py-1 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">顶层</button>
+                <button id="btn-prop-send-back" type="button" class="px-2 py-1 rounded text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">底层</button>
+              </div>
+              <button id="btn-prop-delete" type="button" class="px-2.5 py-1 rounded-lg text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold flex items-center space-x-1">
+                <i class="fa-regular fa-trash-can"></i>
+                <span>删除此标绘</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 未选中状态提示 -->
+          <div id="properties-empty" class="py-6 px-2 text-center">
+            <div class="w-10 h-10 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center text-base mb-1.5">
+              <i class="fa-regular fa-hand-pointer"></i>
+            </div>
+            <p class="text-xs font-semibold text-slate-600">未选中标绘图元</p>
+            <p class="text-[11px] text-slate-400 mt-1 leading-relaxed">在地图上直接点击任意消火栓、箭头或区域，即可在此处微调角度、文字和大小。</p>
+          </div>
+        </div>
+
+        <!-- 模块3：已标绘图层列表 (折叠清单) -->
+        <div class="mt-3 pt-2.5 border-t border-slate-200/80">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold text-slate-700 flex items-center space-x-1">
+              <i class="fa-solid fa-layer-group text-slate-500"></i>
+              <span>已标绘要素清单</span>
+            </span>
+            <span id="plot-layer-count" class="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">0 项</span>
+          </div>
+          <div id="plot-layer-items" class="max-h-32 overflow-y-auto space-y-1 pr-1 text-xs">
+            <div class="text-[11px] text-slate-400 text-center py-2">暂无已绘制标绘</div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- ==================== 模态框：A4 横版标准作战信息卡成品预览 (严格对齐图1规范) ==================== -->
+  <div id="modal-preview" class="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 hidden overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-6xl w-full p-4 sm:p-6 shadow-2xl border border-slate-100 flex flex-col my-auto max-h-[96vh]">
+      
+      <!-- 预览顶部工具栏 (含页码切换、一键美化 与 导出打印) -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200 shrink-0">
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-1.5">
+            <span class="w-3 h-3 rounded-full bg-red-600 inline-block animate-pulse"></span>
+            <h3 class="text-base sm:text-lg font-bold text-slate-900">消防作战信息卡 · 双页 A4 标准输出</h3>
+          </div>
+
+          <!-- 双页视图快速跳转与切换 -->
+          <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl text-xs">
+            <button id="btn-view-all-pages" type="button" class="px-2.5 py-1 rounded-lg font-bold bg-white text-blue-700 shadow-xs">
+              <i class="fa-solid fa-copy mr-1"></i>双页连览
+            </button>
+            <button id="btn-jump-p1" type="button" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 hover:text-slate-900">
+              第1页: 基本信息+水源图
+            </button>
+            <button id="btn-jump-p2" type="button" class="px-2.5 py-1 rounded-lg font-medium text-slate-600 hover:text-slate-900">
+              第2页: 总平面图
+            </button>
+          </div>
+
+          <!-- 一键美化开关 (对应图1右上角"一键美化") -->
+          <button id="btn-beautify-toggle" type="button" class="inline-flex items-center space-x-1 px-3 py-1 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 transition-all shadow-xs" title="在黑实线公文制式与微调打印版式间切换">
+            <i class="fa-solid fa-wand-magic-sparkles text-emerald-600"></i>
+            <span>一键美化</span>
+          </button>
+        </div>
+
+        <!-- 输出下载操作组 -->
+        <div class="flex items-center space-x-2">
+          <!-- 导出高清图片 -->
+          <button id="btn-export-png" type="button" class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center space-x-1" title="按页打包下载高清PNG图片">
+            <i class="fa-regular fa-image text-slate-600"></i>
+            <span>导出图片 (PNG)</span>
+          </button>
+          <!-- 导出 Word 文档 -->
+          <button id="btn-export-docx" type="button" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors flex items-center space-x-1">
+            <i class="fa-regular fa-file-word text-blue-600"></i>
+            <span>导出Word (DOCX)</span>
+          </button>
+          <!-- 导出标准双页 PDF -->
+          <button id="btn-export-pdf-final" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors flex items-center space-x-1 shadow-sm" title="导出包含两页 A4 的完整作战信息卡 PDF">
+            <i class="fa-solid fa-file-pdf"></i>
+            <span>导出双页PDF</span>
+          </button>
+          <!-- 打印 -->
+          <button id="btn-trigger-print" type="button" class="px-3 py-1.5 rounded-xl text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors" title="调用系统打印机（自动双页分页）">
+            <i class="fa-solid fa-print"></i>
+          </button>
+          <!-- 关闭模态框 -->
+          <button id="btn-close-preview" type="button" class="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 预览核心：双页 A4 独立排版 (第1页: 基本信息+水源图, 第2页: 单独总平面图) -->
+      <div id="preview-scroll-viewport" class="flex-1 overflow-auto py-4 bg-slate-200/80 rounded-2xl my-2 px-3 flex flex-col items-center gap-6">
+        <div id="print-modal-content" class="w-full flex flex-col items-center gap-8">
+          
+          <!-- ===== 第1页：基本信息 + 水源图 (A4横向标准) ===== -->
+          <div id="print-page-1" class="tactical-print-sheet shadow-2xl select-text relative">
+            <!-- 四角裁切角标 -->
+            <div class="crop-mark-tl"></div>
+            <div class="crop-mark-tr"></div>
+            <div class="crop-mark-bl"></div>
+            <div class="crop-mark-br"></div>
+
+            <!-- 右上角小提示 -->
+            <div class="absolute top-3 right-6 text-[11px] text-slate-400 font-mono flex items-center space-x-1.5">
+              <span class="px-1.5 py-0.5 border border-slate-300 rounded font-semibold text-slate-600 bg-slate-50">第 1 页 / 共 2 页</span>
+              <span class="px-1.5 py-0.5 border border-slate-300 rounded text-slate-500">A4横向</span>
+              <span>消防战备信息卡制式</span>
+            </div>
+
+            <!-- 第1页标准大表格 (严格对应左表右图) -->
+            <table class="fire-standard-table">
+              <thead>
+                <tr>
+                  <th colspan="2" class="w-[410px] text-center">基 本 信 息</th>
+                  <th id="card-print-map-header" class="text-center">水 源 图</th>
+                </tr>
+              </thead>
+              <tbody id="card-print-table-rows">
+                <!-- 动态根据字段生成，右侧地图单元格 rowspan="5" -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ===== 第2页：单独的总平面图 (A4横向标准全幅) ===== -->
+          <div id="print-page-2" class="tactical-print-sheet shadow-2xl select-text relative">
+            <!-- 四角裁切角标 -->
+            <div class="crop-mark-tl"></div>
+            <div class="crop-mark-tr"></div>
+            <div class="crop-mark-bl"></div>
+            <div class="crop-mark-br"></div>
+
+            <!-- 右上角小提示 -->
+            <div class="absolute top-3 right-6 text-[11px] text-slate-400 font-mono flex items-center space-x-1.5">
+              <span class="px-1.5 py-0.5 border border-slate-300 rounded font-semibold text-slate-600 bg-slate-50">第 2 页 / 共 2 页</span>
+              <span class="px-1.5 py-0.5 border border-slate-300 rounded text-slate-500">A4横向</span>
+              <span>总平面图独占单页</span>
+            </div>
+
+            <!-- 第2页标准大表格 (总平面图独占) -->
+            <table class="fire-standard-table">
+              <thead>
+                <tr>
+                  <th class="text-center" style="font-size: 16px; letter-spacing: 2px;">
+                    <span id="card-print-page2-title">总 平 面 图</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="map-photo-cell-full">
+                    <div class="relative w-full h-full min-h-[580px] bg-slate-100 flex items-center justify-center border border-slate-300 overflow-hidden">
+                      <img id="card-print-page2-img" src="" alt="总平面图标绘成果" class="w-full h-full object-cover">
+                      <div id="card-page2-loading" class="absolute inset-0 bg-white/90 flex flex-col items-center justify-center text-xs text-slate-500 space-y-2">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i>
+                        <span class="font-bold">正在渲染总平面图单页大图...</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 吐司通知提示 -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 pointer-events-none transition-all duration-300 px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-xl flex items-center space-x-2">
+    <i id="toast-icon" class="fa-solid fa-check text-emerald-400"></i>
+    <span id="toast-msg">操作成功</span>
+  </div>
+
+  <!-- ==================== 核心逻辑脚本 (兼容 Edge 90+ 与 Chrome) ==================== -->
+  </div>
+
+  <!-- ==================== 脚本：首页模块 ==================== -->
+  <script src="assets/app.js"></script>
+
+  <!-- ==================== 脚本：编辑器模块 ==================== -->
+  
+
+  <!-- ==================== 脚本：单页面路由器与交互桥接 ==================== -->
+  
+
+
+</body></html>

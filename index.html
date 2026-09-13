@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -767,6 +767,15 @@
           <div id="form-template-desc" class="text-[11px] text-slate-500 leading-tight">
             单位基本概况表 + 方位图（环状管网）+ 楼幢平面图
           </div>
+        </div>
+
+        <!-- 名称输入框 (表单顶部，默认 单位名 + 作战信息卡，可自定义) -->
+        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200/90 shadow-2xs space-y-1.5">
+          <span class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+            <i class="fa-solid fa-heading text-blue-600"></i>
+            <span>名 称</span>
+          </span>
+          <input id="input-project-title-form" type="text" class="w-full text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 focus:outline-none focus:border-blue-500 shadow-2xs transition-all" placeholder="如：金域东方单位作战信息卡" />
         </div>
 
         <!-- 动态表单容器 -->
@@ -1925,6 +1934,7 @@
       const selectTemplateType = document.getElementById('select-template-type');
       const formTemplateDesc = document.getElementById('form-template-desc');
       const inputProjectTitle = document.getElementById('input-project-title');
+      const inputProjectTitleForm = document.getElementById('input-project-title-form');
 
       function getFieldsForCurrentTemplate() {
         if (currentTemplate === 'village') return villageFields;
@@ -2037,10 +2047,24 @@
         return { main: '金域东方小区平面图', sub: '楼幢编号与进攻出入口' };
       }
 
-      // 标题输入绑定
-      inputProjectTitle.addEventListener('input', function () {
-        projectData.title = this.value;
-      });
+      // 标题输入绑定：顶部工具栏输入框 与 表单顶部名称输入框 双向同步
+      function syncProjectTitleInputs() {
+        if (inputProjectTitle) inputProjectTitle.value = projectData.title;
+        if (inputProjectTitleForm) inputProjectTitleForm.value = projectData.title;
+      }
+      if (inputProjectTitle) {
+        inputProjectTitle.addEventListener('input', function () {
+          projectData.title = this.value;
+          if (inputProjectTitleForm) inputProjectTitleForm.value = this.value;
+        });
+      }
+      if (inputProjectTitleForm) {
+        inputProjectTitleForm.addEventListener('input', function () {
+          projectData.title = this.value;
+          if (inputProjectTitle) inputProjectTitle.value = this.value;
+        });
+      }
+      syncProjectTitleInputs();
 
       // 模板下拉切换
       if (selectTemplateType) {
@@ -2057,6 +2081,7 @@
         const info = getDefaultProjectData(targetType);
         projectData.title = info.title;
         inputProjectTitle.value = info.title;
+        syncProjectTitleInputs();
         projectData.formValues = { ...info.values };
         renderFormFields();
         loadStandardDemo(targetType);
@@ -3758,6 +3783,7 @@
         const info = getDefaultProjectData(targetType);
         projectData.title = info.title;
         inputProjectTitle.value = info.title;
+        syncProjectTitleInputs();
         projectData.formValues = { ...info.values };
         renderFormFields();
 
@@ -4933,6 +4959,7 @@
 
         currentTemplate = projectData.type;
         inputProjectTitle.value = projectData.title;
+        syncProjectTitleInputs();
         renderFormFields();
 
         map.setView(projectData.mapCenter, projectData.mapZoom);
@@ -5016,6 +5043,7 @@
             projectData.type = params.type;
             projectData.title = params.type === 'village' ? '浙江省杭州市萧山区进化镇城山村作战信息卡' : '萧山区某重点单位作战信息卡';
             inputProjectTitle.value = projectData.title;
+            syncProjectTitleInputs();
             projectData.formValues = params.type === 'village' ? { ...standardVillageDemoData } : (params.type === 'enterprise' ? { ...standardEnterpriseDemoData } : { ...standardCommunityDemoData });
             renderFormFields();
             if (params.type === 'village') {

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+﻿﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
@@ -1997,6 +1997,44 @@
           wrapper.appendChild(input);
           tacticalFormEl.appendChild(wrapper);
         });
+
+        // ===== 第2页总平面图标题自定义（主标题 + 副标题 两段可编辑）=====
+        const page2TitleDefs = [
+          { key: 'page2Title', label: '总平面图标题', placeholder: '如：金域东方小区平面图' },
+          { key: 'page2Subtitle', label: '总平面图副标题', placeholder: '如：楼幢编号与进攻出入口' },
+        ];
+        const _p2t = getDefaultPage2Titles();
+        page2TitleDefs.forEach(function (field) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'space-y-1 pt-0.5';
+          const label = document.createElement('label');
+          label.className = 'block text-xs font-bold text-slate-800 flex items-center justify-between';
+          label.innerHTML = `<span>${field.label}</span> <span class="text-[10px] font-normal text-slate-400">可自定义</span>`;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'w-full text-xs px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:outline-none transition-all';
+          input.name = field.key;
+          input.id = 'field_' + field.key;
+          input.placeholder = field.placeholder;
+          input.value = projectData.formValues[field.key] || (field.key === 'page2Title' ? _p2t.main : _p2t.sub);
+          input.addEventListener('input', function () {
+            projectData.formValues[field.key] = this.value;
+          });
+          wrapper.appendChild(label);
+          wrapper.appendChild(input);
+          tacticalFormEl.appendChild(wrapper);
+        });
+      }
+
+      // 第2页总平面图标题默认值（按模板）
+      function getDefaultPage2Titles() {
+        if (currentTemplate === 'village') {
+          return { main: '新华村总平面图', sub: '重点出租户分布与水源路网' };
+        }
+        if (currentTemplate === 'enterprise') {
+          return { main: '爱博汽车零部件厂区平面图', sub: '车间布局与毗邻单位' };
+        }
+        return { main: '金域东方小区平面图', sub: '楼幢编号与进攻出入口' };
       }
 
       // 标题输入绑定
@@ -4171,7 +4209,10 @@
           if (cardPrintLeftHeader) cardPrintLeftHeader.textContent = '基 本 信 息';
           if (cardPrintMapHeader) cardPrintMapHeader.textContent = '水 源 图';
           if (cardPrintPage2Title) cardPrintPage2Title.textContent = '总 平 面 图';
-          if (cardPrintPage2Subtitle) cardPrintPage2Subtitle.textContent = '新华村总平面图 · 重点出租户分布与水源路网';
+          if (cardPrintPage2Subtitle) {
+            const _pt = getDefaultPage2Titles();
+            cardPrintPage2Subtitle.textContent = (projectData.formValues.page2Title || _pt.main) + ' · ' + (projectData.formValues.page2Subtitle || _pt.sub);
+          }
           if (page2LegendBox) page2LegendBox.classList.remove('hidden');
         } else if (currentTemplate === 'enterprise') {
           if (cardPrintPage1Title) cardPrintPage1Title.textContent = projectData.title || '杭州爱博汽车零部件有限公司单位作战信息卡';
@@ -4179,7 +4220,10 @@
           if (cardPrintLeftHeader) cardPrintLeftHeader.textContent = '单位基本概况';
           if (cardPrintMapHeader) cardPrintMapHeader.textContent = '方 位 图';
           if (cardPrintPage2Title) cardPrintPage2Title.textContent = '平 面 图';
-          if (cardPrintPage2Subtitle) cardPrintPage2Subtitle.textContent = '爱博汽车零部件厂区平面图 · 车间布局与毗邻单位';
+          if (cardPrintPage2Subtitle) {
+            const _pt = getDefaultPage2Titles();
+            cardPrintPage2Subtitle.textContent = (projectData.formValues.page2Title || _pt.main) + ' · ' + (projectData.formValues.page2Subtitle || _pt.sub);
+          }
           if (page2LegendBox) page2LegendBox.classList.add('hidden');
         } else {
           // community (小区)
@@ -4188,7 +4232,10 @@
           if (cardPrintLeftHeader) cardPrintLeftHeader.textContent = '单位基本概况';
           if (cardPrintMapHeader) cardPrintMapHeader.textContent = '方 位 图';
           if (cardPrintPage2Title) cardPrintPage2Title.textContent = '平 面 图';
-          if (cardPrintPage2Subtitle) cardPrintPage2Subtitle.textContent = '金域东方小区平面图 · 楼幢编号与进攻出入口';
+          if (cardPrintPage2Subtitle) {
+            const _pt = getDefaultPage2Titles();
+            cardPrintPage2Subtitle.textContent = (projectData.formValues.page2Title || _pt.main) + ' · ' + (projectData.formValues.page2Subtitle || _pt.sub);
+          }
           if (page2LegendBox) page2LegendBox.classList.add('hidden');
         }
 

@@ -1,4 +1,3 @@
-
 (function () {
       'use strict';
 
@@ -1390,6 +1389,9 @@
         renderMapSnapshot();
       }
 
+      // 地图快照全局缓存：供 Word 导出直接复用（避免抓取视口外 img 产生空白图）
+      let latestMapSnapshotDataUrl = null;
+
       function renderMapSnapshot(callback) {
         const loading1 = document.getElementById('card-map-loading');
         const img1 = document.getElementById('card-print-map-img');
@@ -1407,6 +1409,7 @@
           logging: false
         }).then(canvas => {
           const dataUrl = canvas.toDataURL('image/png');
+          latestMapSnapshotDataUrl = dataUrl;
           if (img1) img1.src = dataUrl;
           if (img2) img2.src = dataUrl;
           if (loading1) loading1.classList.add('hidden');
@@ -1417,6 +1420,18 @@
           if (loading1) loading1.classList.add('hidden');
           if (loading2) loading2.classList.add('hidden');
           if (typeof callback === 'function') callback(null);
+        });
+      }
+
+      // dataURL 转 ArrayBuffer（供 docx ImageRun 直接使用）
+      async function dataUrlToArrayBuffer(dataUrl) {
+        const resp = await fetch(dataUrl);
+        const blob = await resp.blob();
+        const reader = new FileReader();
+        return await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(blob);
         });
       }
 
@@ -1438,7 +1453,7 @@
           return;
         }
 
-        // 确保两页可见以供抓取
+        // 确保两页均可见以供抓取
         p1.classList.remove('hidden');
         p2.classList.remove('hidden');
 
@@ -1553,21 +1568,26 @@
           p2.classList.remove('hidden');
 
           // 2. 等待地图快照渲染完成（最多 8 秒）
-          const mapImg1 = document.getElementById('card-print-map-img');
-          const mapImg2 = document.getElementById('card-print-page2-img');
           await new Promise((resolve) => {
             const t0 = Date.now();
             const iv = setInterval(() => {
-              const ok = (mapImg1 && mapImg1.src) && (mapImg2 && mapImg2.src);
-              if (ok || Date.now() - t0 > 8000) { clearInterval(iv); resolve(); }
+              if (latestMapSnapshotDataUrl || Date.now() - t0 > 8000) { clearInterval(iv); resolve(); }
             }, 150);
           });
-          await new Promise(resolve => setTimeout(resolve, 400));
+          await new Promise(resolve => setTimeout(resolve, 300));
 
-          // 3. 抓取水源图与总平面图高清快照（纯地图截图）
-          const opts = { scale: 2, useCORS: true, allowTaint: true, logging: false, backgroundColor: '#ffffff' };
-          const canvas1 = await html2canvas(mapImg1, opts);
-          const canvas2 = await html2canvas(mapImg2, opts);
+          // 3. 直接复用地图快照 dataURL 生成嵌入图片（两页同一份高清地图截图，杜绝空白图）
+          if (!latestMapSnapshotDataUrl) {
+            throw new Error('地图快照渲染超时，请重试');
+          }
+          const snapshotImg = new Image();
+          snapshotImg.src = latestMapSnapshotDataUrl;
+          await new Promise((res, rej) => { snapshotImg.onload = res; snapshotImg.onerror = rej; });
+          const snapshotCanvas = document.createElement('canvas');
+          snapshotCanvas.width = snapshotImg.naturalWidth;
+          snapshotCanvas.height = snapshotImg.naturalHeight;
+          const snapshotCtx = snapshotCanvas.getContext('2d');
+          snapshotCtx.drawImage(snapshotImg, 0, 0);
 
           const toArrayBuffer = (canvas) => new Promise((resolve, reject) => {
             canvas.toBlob((blob) => {
@@ -1579,16 +1599,16 @@
             }, 'image/png');
           });
 
-          const imgBuf1 = await toArrayBuffer(canvas1);
-          const imgBuf2 = await toArrayBuffer(canvas2);
+          const imgBuf1 = await toArrayBuffer(snapshotCanvas);
+          const imgBuf2 = imgBuf1;
 
           // 4. 按 A4 横向(297mm≈1123px@96dpi)计算图片适配尺寸
           const fitSize = (cw, ch, mw) => {
             const w = Math.min(cw, mw);
             return { width: Math.round(w), height: Math.round(ch * (w / cw)) };
           };
-          const fit1 = fitSize(canvas1.width, canvas1.height, 540);   // 第1页右侧水源图单元格
-          const fit2 = fitSize(canvas2.width, canvas2.height, 1040);  // 第2页全幅总平面图
+          const fit1 = fitSize(snapshotCanvas.width, snapshotCanvas.height, 540);   // 第1页右侧水源图单元格
+          const fit2 = fitSize(snapshotCanvas.width, snapshotCanvas.height, 1040);  // 第2页全幅总平面图
 
           const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, ImageRun } = window.docx;
           const fields = currentTemplate === 'village' ? villageFields : buildingFields;
@@ -2058,4 +2078,3 @@ window.AppRouter = {
       window.AppRouter.init();
     }
   });
-  
